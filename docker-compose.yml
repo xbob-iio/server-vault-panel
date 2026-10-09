@@ -1,0 +1,89 @@
+# ServerVault в Docker: приложение + Caddy (HTTPS через Let's Encrypt, DNS-проверка DuckDNS) + обновление IP в DuckDNS.
+# Настройки — в deploy/.env (пример: deploy/.env.example). Запуск: docker compose --env-file deploy/.env up -d --build
+
+name: servervault
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  app:
+    <<: *hardening
+    build: .
+    image: servervault:latest
+    environment:
+      TZ: ${TZ:-Europe/Moscow}
+      TRUST_PROXY: uniquelocal # доверяем только Caddy из внутренней docker-сети
+      SECURE_COOKIES: "true"
+      SESSION_IDLE_MINUTES: ${SESSION_IDLE_MINUTES:-30}
+      SESSION_MAX_HOURS: ${SESSION_MAX_HOURS:-12}
+    volumes:
+      - data:/data
+    networks: [web]
+    # порт наружу не публикуется — доступ только через Caddy
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    mem_limit: 512m
+    pids_limit: 200
+
+  caddy:
+    <<: *hardening
+    build:
+      context: ./deploy
+      dockerfile: caddy.Dockerfile
+    image: servervault-caddy:latest
+    depends_on:
+      app:
+        condition: service_healthy
+    # Наружу только HTTPS. Порт 80 не нужен: сертификат выпускается через DNS-проверку DuckDNS.
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?укажите DOMAIN в deploy/.env}
+      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN:?укажите DUCKDNS_TOKEN в deploy/.env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [web]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    mem_limit: 256m
+
+  duckdns:
+    <<: *hardening
+    image: curlimages/curl:8.10.1
+    environment:
+      DUCKDNS_SUBDOMAIN: ${DUCKDNS_SUBDOMAIN:?укажите DUCKDNS_SUBDOMAIN в deploy/.env}
+      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN}
+    entrypoint: ["/bin/sh", "-c"]
+    # раз в 5 минут сообщает DuckDNS текущий внешний IP (токен не выводится в лог)
+    command:
+      - >-
+        while true; do
+          r=$$(curl -fsS --max-time 20 "https://www.duckdns.org/update?domains=$${DUCKDNS_SUBDOMAIN}&token=$${DUCKDNS_TOKEN}&ip=" 2>&1 | head -c 20);
+          echo "$$(date -Iseconds) duckdns update: $${r:-ошибка}";
+          sleep 300;
+        done
+    read_only: true
+    cap_drop: [ALL]
+    mem_limit: 32m
+
+volumes:
+  data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  web:
