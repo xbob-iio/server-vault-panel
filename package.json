@@ -1,0 +1,20 @@
+{
+  "name": "server-vault-panel",
+  "version": "1.0.0",
+  "description": "ServerVault — защищённая панель для хранения доступов к серверам (VDS / VPN) и напоминаний об оплате",
+  "type": "module",
+  "main": "server/index.js",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.7.0"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "express": "5.3.0",
+    "qrcode": "1.5.4"
+  }
+}

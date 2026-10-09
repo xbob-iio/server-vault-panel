@@ -1,0 +1,176 @@
+/* ───────── страница 404 ───────── */
+
+.nf-page { min-height: 100vh; overflow: hidden; }
+
+#stars { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+
+.nf {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  text-align: center;
+}
+
+/* планета и потерявшийся «спутник» */
+.nf-visual { position: relative; width: 260px; height: 150px; margin-bottom: -18px; animation: fade-in 1s var(--ease) both; }
+.planet {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  width: 92px;
+  height: 92px;
+  margin-left: -46px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #8fdcff 0%, #2f7bff 35%, #0b1d52 72%, #050b1d 100%);
+  box-shadow: 0 0 60px -6px rgba(47, 123, 255, 0.85), inset -14px -16px 30px rgba(0, 0, 0, 0.55);
+  animation: float-y 7s ease-in-out infinite;
+}
+.ring-orbit {
+  position: absolute;
+  left: -50px;
+  right: -50px;
+  top: 36px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(86, 170, 255, 0.55);
+  border-top-color: transparent;
+  transform: rotate(-14deg);
+  box-shadow: 0 0 18px -4px rgba(60, 203, 255, 0.7);
+}
+.sat {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  animation: orbit 9s linear infinite;
+}
+.sat img { animation: tumble 9s linear infinite, glow-pulse 2.4s ease-in-out infinite; }
+.signal {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 77, 109, 0.7);
+  opacity: 0;
+  animation: lost 2.4s ease-out infinite;
+}
+.signal.s2 { animation-delay: 0.8s; }
+.signal.s3 { animation-delay: 1.6s; }
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(122px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(122px) rotate(-360deg); }
+}
+@keyframes tumble { to { transform: rotate(-360deg); } }
+@keyframes lost {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* glitch-эффект */
+.glitch {
+  position: relative;
+  margin: 0;
+  font-size: clamp(110px, 22vw, 210px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  background: linear-gradient(180deg, #ffffff 0%, #9fd8ff 35%, #2f7bff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 40px rgba(47, 123, 255, 0.55));
+  animation: card-pop 0.9s var(--spring) both, glitch-skew 4s infinite steps(1);
+}
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.glitch::before {
+  background-image: linear-gradient(180deg, #3ccbff, #3ccbff);
+  transform: translateX(-4px);
+  clip-path: inset(0 0 100% 0);
+  animation: glitch-a 3.2s infinite linear alternate-reverse;
+  mix-blend-mode: screen;
+}
+.glitch::after {
+  background-image: linear-gradient(180deg, #ff4d6d, #ff4d6d);
+  transform: translateX(4px);
+  clip-path: inset(100% 0 0 0);
+  animation: glitch-b 2.6s infinite linear alternate-reverse;
+  mix-blend-mode: screen;
+}
+@keyframes card-pop { from { opacity: 0; scale: 0.7; translate: 0 20px; } to { opacity: 1; scale: 1; translate: 0 0; } }
+@keyframes glitch-a {
+  0%, 82% { clip-path: inset(0 0 100% 0); }
+  84% { clip-path: inset(12% 0 70% 0); }
+  86% { clip-path: inset(48% 0 30% 0); }
+  88% { clip-path: inset(80% 0 4% 0); }
+  90% { clip-path: inset(30% 0 52% 0); }
+  92%, 100% { clip-path: inset(0 0 100% 0); }
+}
+@keyframes glitch-b {
+  0%, 78% { clip-path: inset(100% 0 0 0); }
+  80% { clip-path: inset(62% 0 18% 0); }
+  83% { clip-path: inset(8% 0 78% 0); }
+  86% { clip-path: inset(40% 0 44% 0); }
+  89%, 100% { clip-path: inset(100% 0 0 0); }
+}
+@keyframes glitch-skew {
+  0%, 89%, 100% { transform: none; }
+  90% { transform: skewX(-8deg) translateX(-3px); }
+  91% { transform: skewX(6deg) translateX(3px); }
+  92% { transform: none; }
+}
+
+.nf-title { margin-top: 4px; font-size: clamp(20px, 3vw, 27px); font-weight: 750; letter-spacing: -0.02em; animation: fade-up 0.7s var(--ease) 0.25s both; }
+.nf-sub { max-width: 480px; margin-top: 10px; color: var(--muted); animation: fade-up 0.7s var(--ease) 0.35s both; }
+
+.nf-term {
+  width: min(480px, 100%);
+  margin-top: 26px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(5, 9, 18, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  text-align: left;
+  overflow: hidden;
+  animation: fade-up 0.7s var(--ease) 0.45s both;
+}
+.term-bar { display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.term-bar i { width: 10px; height: 10px; border-radius: 50%; }
+.term-bar i:nth-child(1) { background: #ff5f73; }
+.term-bar i:nth-child(2) { background: #ffbf47; }
+.term-bar i:nth-child(3) { background: #2bd99f; }
+.term-bar span { margin-left: 8px; color: var(--dim); font-size: 12px; }
+.nf-term pre {
+  margin: 0;
+  min-height: 118px;
+  padding: 12px 14px 14px;
+  color: #a9b8dd;
+  font-size: 12.5px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.nf-term .p { color: var(--cyan); }
+.nf-term .err { color: var(--danger); }
+.nf-term .cur { display: inline-block; width: 8px; height: 15px; vertical-align: -2px; background: var(--blue-2); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.nf-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; animation: fade-up 0.7s var(--ease) 0.55s both; }
+
+@media (max-width: 480px) {
+  .nf-visual { transform: scale(0.8); }
+}

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#030509">
+  <title>Вход · ServerVault</title>
+  <link rel="icon" href="/assets/img/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/login.css">
+  <script type="module" src="/assets/js/login.js"></script>
+</head>
+<body class="auth-page">
+  <div class="backdrop"><div class="grid"></div><div class="orb o1"></div><div class="orb o2"></div></div>
+  <canvas id="net" aria-hidden="true"></canvas>
+
+  <main class="auth">
+    <section class="hero" aria-hidden="true">
+      <div class="hero-badge"><span class="dot"></span> Защищённое хранилище</div>
+      <h1 class="hero-title"><span>Server</span><b>Vault</b></h1>
+      <p class="hero-sub">Доступы к серверам, напоминания об оплате VDS и VPN, мониторинг — в одном зашифрованном месте.</p>
+      <ul class="features">
+        <li><span data-icon="lock"></span>Пароли шифруются AES-256-GCM</li>
+        <li><span data-icon="fingerprint"></span>Argon2id и двухфакторная защита</li>
+        <li><span data-icon="send"></span>Напоминания об оплате в Telegram</li>
+        <li><span data-icon="activity"></span>Мониторинг доступности серверов</li>
+      </ul>
+      <div class="term">
+        <div class="term-bar"><i></i><i></i><i></i><span>vault — ssh</span></div>
+        <pre id="term" class="mono"></pre>
+      </div>
+    </section>
+
+    <section class="card-wrap">
+      <div class="auth-card" id="card">
+        <header class="card-head">
+          <div class="logo-orb">
+            <img src="/assets/img/logo.svg" alt="ServerVault" width="44" height="44">
+            <span class="orbit"></span>
+          </div>
+          <h2 id="card-title">Вход в панель</h2>
+          <p id="card-sub" class="muted">Введите данные администратора</p>
+        </header>
+
+        <div id="alert" class="form-error" role="alert" hidden></div>
+
+        <form id="login-form" class="stack pane" novalidate>
+          <div class="float">
+            <span data-icon="user" class="lead"></span>
+            <input id="l-user" name="username" autocomplete="username" placeholder=" " maxlength="64" spellcheck="false" autocapitalize="off" required>
+            <label for="l-user">Логин</label>
+          </div>
+          <div class="float">
+            <span data-icon="key" class="lead"></span>
+            <input id="l-pass" name="password" type="password" autocomplete="current-password" placeholder=" " maxlength="256" required>
+            <label for="l-pass">Пароль</label>
+            <button type="button" class="icon-btn eye" data-toggle="l-pass" aria-label="Показать пароль"><span data-icon="eye"></span></button>
+          </div>
+          <p class="caps" hidden><span data-icon="alert" class="i-sm"></span> Включён Caps Lock</p>
+          <button class="btn btn-primary btn-lg btn-block" type="submit"><span>Войти</span><span data-icon="chevRight"></span><i class="spinner"></i></button>
+        </form>
+
+        <form id="totp-form" class="stack pane" novalidate hidden>
+          <div class="otp" id="otp"></div>
+          <div class="float" id="recovery-wrap" hidden>
+            <span data-icon="hash" class="lead"></span>
+            <input id="recovery" autocomplete="one-time-code" placeholder=" " maxlength="11" spellcheck="false" autocapitalize="characters">
+            <label for="recovery">Резервный код (XXXXX-XXXXX)</label>
+          </div>
+          <button class="btn btn-primary btn-lg btn-block" type="submit"><span>Подтвердить</span><i class="spinner"></i></button>
+          <div class="links">
+            <button type="button" class="link-btn" id="back-btn">← Назад</button>
+            <button type="button" class="link-btn" id="recovery-btn">Использовать резервный код</button>
+          </div>
+        </form>
+
+        <form id="setup-form" class="stack pane" novalidate hidden>
+          <div class="float">
+            <span data-icon="terminal" class="lead"></span>
+            <input id="s-token" autocomplete="off" placeholder=" " maxlength="40" spellcheck="false" autocapitalize="characters" required>
+            <label for="s-token">Токен установки из консоли</label>
+          </div>
+          <div class="float">
+            <span data-icon="user" class="lead"></span>
+            <input id="s-user" autocomplete="username" placeholder=" " maxlength="32" spellcheck="false" autocapitalize="off" required>
+            <label for="s-user">Логин администратора</label>
+          </div>
+          <div class="float">
+            <span data-icon="key" class="lead"></span>
+            <input id="s-pass" type="password" autocomplete="new-password" placeholder=" " maxlength="256" required>
+            <label for="s-pass">Пароль (от 10 символов)</label>
+            <button type="button" class="icon-btn eye" data-toggle="s-pass" aria-label="Показать пароль"><span data-icon="eye"></span></button>
+          </div>
+          <div id="s-strength"></div>
+          <div class="float">
+            <span data-icon="shieldCheck" class="lead"></span>
+            <input id="s-pass2" type="password" autocomplete="new-password" placeholder=" " maxlength="256" required>
+            <label for="s-pass2">Повторите пароль</label>
+          </div>
+          <p class="caps" hidden><span data-icon="alert" class="i-sm"></span> Включён Caps Lock</p>
+          <p class="note"><span data-icon="info" class="i-sm"></span> Пароль — ключ к шифрованию данных. Если его забыть, восстановить сохранённые доступы будет невозможно.</p>
+          <button class="btn btn-primary btn-lg btn-block" type="submit"><span>Создать администратора</span><i class="spinner"></i></button>
+        </form>
+
+        <footer class="card-foot"><span data-icon="shieldCheck" class="i-sm"></span> Зашифровано · AES-256-GCM · Argon2id</footer>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

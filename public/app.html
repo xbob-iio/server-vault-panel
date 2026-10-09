@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#030509">
+  <title>ServerVault</title>
+  <link rel="icon" href="/assets/img/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script type="module" src="/assets/js/app.js"></script>
+</head>
+<body class="app-page">
+  <div class="backdrop"><div class="grid"></div><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
+
+  <div class="boot" id="boot">
+    <div class="boot-logo"><img src="/assets/img/logo.svg" alt="" width="56" height="56"></div>
+    <div class="boot-bar"><i></i></div>
+    <p>Расшифровка хранилища…</p>
+  </div>
+
+  <div class="shell" id="shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#/servers">
+        <img src="/assets/img/logo.svg" alt="" width="36" height="36">
+        <span>Server<b>Vault</b></span>
+      </a>
+
+      <nav class="nav" id="nav" aria-label="Разделы">
+        <span class="nav-indicator" id="nav-indicator"></span>
+        <a href="#/servers" data-route="servers"><span data-icon="server"></span><span>Серверы</span><em class="nav-count" id="count-servers"></em></a>
+        <a href="#/payments" data-route="payments"><span data-icon="wallet"></span><span>Оплаты</span><em class="nav-count warn" id="count-due" hidden></em></a>
+        <a href="#/generator" data-route="generator"><span data-icon="wand"></span><span>Генератор</span></a>
+        <a href="#/audit" data-route="audit"><span data-icon="list"></span><span>Журнал</span></a>
+        <a href="#/settings" data-route="settings"><span data-icon="sliders"></span><span>Настройки</span></a>
+      </nav>
+
+      <div class="side-card">
+        <div class="side-card-head"><span data-icon="shieldCheck"></span><b>Хранилище открыто</b></div>
+        <p class="muted" id="lock-note">Ключ шифрования в памяти до выхода</p>
+        <div class="side-meter"><i id="idle-bar"></i></div>
+      </div>
+
+      <div class="side-user">
+        <div class="avatar" id="avatar"></div>
+        <div class="who"><b id="me-name"></b><small>Администратор</small></div>
+        <button class="icon-btn" id="logout" data-tip="Выйти" aria-label="Выйти"><span data-icon="logout"></span></button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" id="menu-btn" aria-label="Меню"><span data-icon="menu"></span></button>
+        <div class="page-title">
+          <h1 id="page-title">Серверы</h1>
+          <p id="page-sub" class="muted"></p>
+        </div>
+        <div class="top-actions">
+          <div class="bell-wrap">
+            <button class="icon-btn bell" id="bell" aria-label="Напоминания"><span data-icon="bell"></span><span class="bell-count" id="bell-count" hidden></span></button>
+            <div class="popover" id="bell-pop" hidden></div>
+          </div>
+          <button class="btn btn-primary" id="add-btn"><span data-icon="plus"></span><span class="label">Добавить сервер</span></button>
+        </div>
+      </header>
+
+      <main class="view" id="view"></main>
+    </div>
+  </div>
+  <div class="scrim" id="scrim"></div>
+</body>
+</html>

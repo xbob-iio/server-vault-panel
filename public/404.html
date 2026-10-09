@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#030509">
+  <title>404 · Страница не найдена</title>
+  <link rel="icon" href="/assets/img/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/404.css">
+  <script type="module" src="/assets/js/404.js"></script>
+</head>
+<body class="nf-page">
+  <div class="backdrop"><div class="grid"></div><div class="orb o1"></div><div class="orb o2"></div></div>
+  <canvas id="stars" aria-hidden="true"></canvas>
+
+  <main class="nf">
+    <div class="nf-visual" aria-hidden="true">
+      <div class="planet"><div class="ring-orbit"></div></div>
+      <div class="sat">
+        <img src="/assets/img/logo.svg" alt="" width="54" height="54">
+        <span class="signal"></span><span class="signal s2"></span><span class="signal s3"></span>
+      </div>
+    </div>
+
+    <h1 class="glitch" data-text="404">404</h1>
+    <p class="nf-title">Сервер не отвечает по этому адресу</p>
+    <p class="nf-sub">Страница, которую вы ищете, не существует, была перемещена или потерялась где-то в дата-центре.</p>
+
+    <div class="nf-term">
+      <div class="term-bar"><i></i><i></i><i></i><span>bash</span></div>
+      <pre id="nf-term" class="mono"></pre>
+    </div>
+
+    <div class="nf-actions">
+      <a class="btn btn-primary btn-lg" href="/"><span data-icon="home"></span>На главную</a>
+      <button class="btn btn-lg" type="button" id="back"><span data-icon="chevLeft"></span>Назад</button>
+    </div>
+  </main>
+</body>
+</html>

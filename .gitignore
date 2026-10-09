@@ -1,0 +1,10 @@
+node_modules/
+data/
+.env
+*.db
+*.db-wal
+*.db-shm
+*.svbak
+*.log
+.DS_Store
+Thumbs.db
