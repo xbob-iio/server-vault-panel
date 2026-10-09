@@ -78,7 +78,22 @@ npm start
 2. В панели откройте «Настройки» → «Telegram-напоминания», вставьте токен и нажмите «Сохранить».
 3. Отправьте боту `/start` и нажмите «Найти мой чат». Придёт подтверждение.
 
-### Доступ из интернета (VPS)
+### Docker с HTTPS (рекомендуется)
+
+В комплекте [docker-compose.yml](docker-compose.yml): приложение, [Caddy](https://caddyserver.com/) с сертификатом Let's Encrypt и контейнер, который обновляет IP в [DuckDNS](https://www.duckdns.org/). Сертификат выпускается и **продлевается автоматически** через DNS-проверку DuckDNS, порт 80 не нужен. Наружу открыт только 443.
+
+```bash
+git clone https://github.com/xbob-iio/server-vault-panel.git && cd server-vault-panel
+cp deploy/.env.example deploy/.env && chmod 600 deploy/.env   # впишите домен и токен DuckDNS
+docker compose --env-file deploy/.env up -d --build
+docker compose --env-file deploy/.env logs app | grep -A2 "токен установки"
+```
+
+На роутере пробросьте внешний порт 443 (TCP и UDP) на сервер. Обновление: `git pull && docker compose --env-file deploy/.env up -d --build`. Данные лежат в docker-томе `servervault_data`.
+
+Защита контейнеров: приложение работает от непривилегированного пользователя, файловая система только для чтения, `cap_drop: ALL`, `no-new-privileges`. Порт приложения не публикуется, доступ только через Caddy. Caddy игнорирует поддельные `X-Forwarded-For`, поэтому лимиты попыток входа нельзя обойти.
+
+### Доступ из интернета без Docker (VPS)
 
 Панель по умолчанию слушает только `127.0.0.1`. Наружу её публикуют через reverse-proxy с HTTPS, например [Caddy](https://caddyserver.com/), который сам получает сертификат:
 
