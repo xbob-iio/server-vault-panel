@@ -94,6 +94,12 @@ export function requireAuth(req, res, next) {
   next();
 }
 
+/** Только для администратора (после requireAuth). Помощнику настройки, журнал и бэкап недоступны. */
+export function requireAdmin(req, res, next) {
+  if (req.session?.role !== 'admin') return res.status(403).json({ error: 'Недостаточно прав' });
+  next();
+}
+
 /** Скользящее окно в памяти. check() → секунд до разблокировки (0 — можно). */
 export function createLimiter({ windowMs, max }) {
   const hits = new Map();

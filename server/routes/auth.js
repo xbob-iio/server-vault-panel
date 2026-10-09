@@ -5,7 +5,7 @@ import { audit } from '../audit.js';
 import { config } from '../config.js';
 import { KDF_PARAMS, deriveKeys, open, safeEqual, seal } from '../crypto.js';
 import { q, tx } from '../db.js';
-import { cookieOptions, createLimiter, currentSession, parseCookies, rateLimit, requireAuth, retryMessage } from '../security.js';
+import { cookieOptions, createLimiter, currentSession, parseCookies, rateLimit, requireAdmin, requireAuth, retryMessage } from '../security.js';
 import * as S from '../sessions.js';
 import { base32Encode, hashRecovery, newRecoveryCodes, newTotpSecret, totpUri, verifyTotp } from '../totp.js';
 import { HttpError, bad, notFound, secret, str, username as validUsername } from '../validate.js';
@@ -29,7 +29,7 @@ const userById = (id) => q('SELECT * FROM users WHERE id = ?').get(id);
 const dummySalt = crypto.randomBytes(16);
 
 /** Проверяет пароль и возвращает расшифрованный ключ данных (dek) или null. */
-async function unlock(user, password) {
+export async function unlock(user, password) {
   const keys = await deriveKeys(password, Buffer.from(user.kdf_salt), JSON.parse(user.kdf_params));
   try {
     if (!safeEqual(keys.auth, Buffer.from(user.auth_hash))) return null;
@@ -40,7 +40,7 @@ async function unlock(user, password) {
   }
 }
 
-async function wrapForPassword(password, dek) {
+export async function wrapForPassword(password, dek) {
   const salt = crypto.randomBytes(16);
   const keys = await deriveKeys(password, salt);
   const wrapped = { salt, params: JSON.stringify(KDF_PARAMS), auth: keys.auth, dek: seal(keys.kek, dek, 'dek') };
@@ -48,7 +48,7 @@ async function wrapForPassword(password, dek) {
   return wrapped;
 }
 
-function passwordPolicy(value, name = 'Пароль') {
+export function passwordPolicy(value, name = 'Пароль') {
   const pw = secret(value, name, { required: true, min: MIN_PASSWORD, max: 256 });
   if (/^(.)\1+$/.test(pw) || /^(0123456789|1234567890|qwertyuiop|password\d*)$/i.test(pw)) throw bad('Пароль слишком простой');
   return pw;
@@ -77,6 +77,7 @@ export async function confirmPassword(req, value) {
 function startSession(req, res, user, dek) {
   const { token } = S.createSession(user, dek, req);
   res.cookie(S.SESSION_COOKIE, token, cookieOptions(req));
+  q('UPDATE users SET last_login_at = ? WHERE id = ?').run(Date.now(), user.id);
 }
 
 const router = express.Router();
@@ -108,7 +109,7 @@ router.post('/setup', rateLimit(setupLimiter), async (req, res) => {
   });
   setupToken.value = null;
   startSession(req, res, userById(id), dek);
-  audit('setup', req, name);
+  audit('setup', req, name, name);
   res.json({ ok: true });
 });
 
@@ -145,6 +146,13 @@ router.post('/login', async (req, res) => {
     return fail();
   }
   q('UPDATE users SET failed_logins = 0, locked_until = 0 WHERE id = ?').run(user.id);
+  // Пароль верный — можно честно сообщить о блокировке, это не раскрывает существование логина.
+  if (user.disabled) {
+    dek.fill(0);
+    loginLimiter.hit(req.ip);
+    audit('login_disabled', req, user.username, user.username);
+    return res.status(403).json({ error: 'Профиль заблокирован администратором' });
+  }
 
   if (user.totp_secret) {
     const token = S.createPending(user, dek);
@@ -153,7 +161,7 @@ router.post('/login', async (req, res) => {
   }
   loginLimiter.reset(req.ip);
   startSession(req, res, user, dek);
-  audit('login_ok', req, user.username);
+  audit('login_ok', req, user.username, user.username);
   res.json({ ok: true });
 });
 
@@ -207,7 +215,7 @@ router.post('/2fa', async (req, res) => {
   loginLimiter.reset(req.ip);
   twoFaLimiter.reset(req.ip);
   startSession(req, res, user, dek);
-  audit(recoveryLeft === undefined ? 'login_ok' : 'recovery_used', req, user.username);
+  audit(recoveryLeft === undefined ? 'login_ok' : 'recovery_used', req, user.username, user.username);
   res.json({ ok: true, recoveryLeft });
 });
 
@@ -221,7 +229,9 @@ router.post('/logout', requireAuth, (req, res) => {
 router.get('/me', requireAuth, (req, res) => {
   const user = userById(req.session.userId);
   res.json({
+    id: user.id,
     username: user.username,
+    role: req.session.role,
     csrf: req.session.csrf,
     totp: Boolean(user.totp_secret),
     recoveryLeft: user.recovery_codes ? JSON.parse(user.recovery_codes).length : 0,
@@ -231,7 +241,7 @@ router.get('/me', requireAuth, (req, res) => {
   });
 });
 
-router.post('/password', requireAuth, async (req, res) => {
+router.post('/password', requireAuth, requireAdmin, async (req, res) => {
   const next = passwordPolicy(req.body?.next, 'Новый пароль');
   await confirmPassword(req, req.body?.current);
   const w = await wrapForPassword(next, req.session.dek);
@@ -242,7 +252,7 @@ router.post('/password', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-router.post('/totp/setup', requireAuth, async (req, res) => {
+router.post('/totp/setup', requireAuth, requireAdmin, async (req, res) => {
   const totpSecret = newTotpSecret();
   req.session.totpDraft = { secret: totpSecret, expires: Date.now() + 10 * 60_000 };
   const svg = await QRCode.toString(totpUri(totpSecret, req.session.username), {
@@ -254,7 +264,7 @@ router.post('/totp/setup', requireAuth, async (req, res) => {
   });
 });
 
-router.post('/totp/enable', requireAuth, (req, res) => {
+router.post('/totp/enable', requireAuth, requireAdmin, (req, res) => {
   const draft = req.session.totpDraft;
   if (!draft || draft.expires < Date.now()) throw bad('Время настройки истекло — начните заново');
   const step = verifyTotp(draft.secret, String(req.body?.code ?? '').replace(/\s/g, ''), 0);
@@ -268,14 +278,14 @@ router.post('/totp/enable', requireAuth, (req, res) => {
   res.json({ ok: true, recoveryCodes: codes });
 });
 
-router.post('/totp/disable', requireAuth, async (req, res) => {
+router.post('/totp/disable', requireAuth, requireAdmin, async (req, res) => {
   await confirmPassword(req, req.body?.password);
   q('UPDATE users SET totp_secret = NULL, totp_last_step = 0, recovery_codes = NULL WHERE id = ?').run(req.session.userId);
   audit('totp_disable', req);
   res.json({ ok: true });
 });
 
-router.post('/recovery', requireAuth, async (req, res) => {
+router.post('/recovery', requireAuth, requireAdmin, async (req, res) => {
   await confirmPassword(req, req.body?.password);
   if (!userById(req.session.userId).totp_secret) throw bad('Сначала включите 2FA');
   const codes = newRecoveryCodes();
@@ -284,17 +294,20 @@ router.post('/recovery', requireAuth, async (req, res) => {
   res.json({ ok: true, recoveryCodes: codes });
 });
 
-router.get('/sessions', requireAuth, (req, res) => {
-  res.json(S.listSessions(req.session.userId)
-    .map((s) => ({ id: s.id, ip: s.ip, ua: s.ua, createdAt: s.createdAt, lastSeen: s.lastSeen, current: s === req.session }))
-    .sort((a, b) => b.lastSeen - a.lastSeen));
+router.get('/sessions', requireAuth, requireAdmin, (req, res) => {
+  res.json(S.listSessions()
+    .map((s) => ({
+      id: s.id, username: s.username, role: s.role, ip: s.ip, ua: s.ua,
+      createdAt: s.createdAt, lastSeen: s.lastSeen, current: s === req.session,
+    }))
+    .sort((a, b) => Number(b.current) - Number(a.current) || b.lastSeen - a.lastSeen));
 });
 
-router.delete('/sessions/:id', requireAuth, (req, res) => {
-  const target = S.findSessionById(req.session.userId, String(req.params.id));
+router.delete('/sessions/:id', requireAuth, requireAdmin, (req, res) => {
+  const target = S.findSessionById(String(req.params.id));
   if (!target) throw notFound('Сессия не найдена');
   S.destroySession(target);
-  audit('session_revoke', req, target.ip);
+  audit('session_revoke', req, `${target.username} · ${target.ip}`);
   res.json({ ok: true });
 });
 

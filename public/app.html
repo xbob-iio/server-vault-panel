@@ -33,8 +33,9 @@
         <a href="#/servers" data-route="servers"><span data-icon="server"></span><span>Серверы</span><em class="nav-count" id="count-servers"></em></a>
         <a href="#/payments" data-route="payments"><span data-icon="wallet"></span><span>Оплаты</span><em class="nav-count warn" id="count-due" hidden></em></a>
         <a href="#/generator" data-route="generator"><span data-icon="wand"></span><span>Генератор</span></a>
-        <a href="#/audit" data-route="audit"><span data-icon="list"></span><span>Журнал</span></a>
-        <a href="#/settings" data-route="settings"><span data-icon="sliders"></span><span>Настройки</span></a>
+        <a href="#/team" data-route="team" data-admin hidden><span data-icon="users"></span><span>Помощники</span><em class="nav-count" id="count-team"></em></a>
+        <a href="#/audit" data-route="audit" data-admin hidden><span data-icon="list"></span><span>Журнал</span></a>
+        <a href="#/settings" data-route="settings" data-admin hidden><span data-icon="sliders"></span><span>Настройки</span></a>
       </nav>
 
       <div class="side-card">
@@ -45,7 +46,7 @@
 
       <div class="side-user">
         <div class="avatar" id="avatar"></div>
-        <div class="who"><b id="me-name"></b><small>Администратор</small></div>
+        <div class="who"><b id="me-name"></b><small id="me-role">Администратор</small></div>
         <button class="icon-btn" id="logout" data-tip="Выйти" aria-label="Выйти"><span data-icon="logout"></span></button>
       </div>
     </aside>

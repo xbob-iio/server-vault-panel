@@ -9,14 +9,19 @@ import * as payments from './views/payments.js';
 import { openServerForm } from './views/serverForm.js';
 import * as servers from './views/servers.js';
 import * as settings from './views/settings.js';
+import * as team from './views/team.js';
 
+// admin: true — раздел только для администратора (сервер всё равно проверяет права сам).
 const ROUTES = {
   servers: { title: 'Серверы', sub: 'Доступы, статус и сроки оплаты', view: servers },
   payments: { title: 'Оплаты', sub: 'Календарь платежей и история', view: payments },
   generator: { title: 'Генератор паролей', sub: 'Криптостойкие пароли прямо в браузере', view: generator },
-  audit: { title: 'Журнал', sub: 'Входы и действия в панели', view: audit },
-  settings: { title: 'Настройки', sub: 'Безопасность, Telegram и резервные копии', view: settings },
+  team: { title: 'Помощники', sub: 'Профили с ограниченным доступом', view: team, admin: true },
+  audit: { title: 'Журнал', sub: 'Входы и действия в панели', view: audit, admin: true },
+  settings: { title: 'Настройки', sub: 'Безопасность, Telegram и резервные копии', view: settings, admin: true },
 };
+
+const isAdmin = () => store.me?.role === 'admin';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -40,8 +45,9 @@ function moveIndicator(route) {
 async function navigate() {
   const token = ++navToken;
   const name = (location.hash.match(/^#\/(\w+)/) || [])[1];
-  const route = ROUTES[name] ? name : 'servers';
-  if (name && !ROUTES[name]) history.replaceState(null, '', '#/servers');
+  const allowed = ROUTES[name] && (!ROUTES[name].admin || isAdmin());
+  const route = allowed ? name : 'servers';
+  if (name && !allowed) history.replaceState(null, '', '#/servers');
   document.body.classList.remove('nav-open');
 
   for (const a of $$('.nav a')) a.classList.toggle('active', a.dataset.route === route);
@@ -208,6 +214,9 @@ async function boot() {
     setCsrf(me.csrf);
     $('#me-name').textContent = me.username;
     $('#avatar').textContent = me.username.charAt(0);
+    $('#me-role').textContent = isAdmin() ? 'Администратор' : 'Помощник';
+    $('#avatar').classList.toggle('assistant', !isAdmin());
+    for (const el of $$('[data-admin]')) el.hidden = !isAdmin();
     trackIdle(me.idleMinutes);
     await loadServers();
     loadStatus().catch(() => {});
@@ -229,7 +238,7 @@ async function boot() {
     sessionStorage.removeItem('sv-recovery-left');
     toast(`Вход по резервному коду. Осталось кодов: ${left}`, 'warn', 7000);
   }
-  if (!store.me.totp) setTimeout(() => toast('Совет: включите 2FA в настройках для дополнительной защиты', 'info', 6000), 2500);
+  if (isAdmin() && !store.me.totp) setTimeout(() => toast('Совет: включите 2FA в настройках для дополнительной защиты', 'info', 6000), 2500);
 
   browserNotify();
   setInterval(() => loadStatus().catch(() => {}), 20_000);

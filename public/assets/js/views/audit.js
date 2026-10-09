@@ -15,6 +15,12 @@ const EVENTS = {
   totp_disable: ['2FA отключена', 'shield', 'warn', 'auth'],
   recovery_regen: ['Новые резервные коды', 'hash', 'warn', 'auth'],
   session_revoke: ['Сессия завершена принудительно', 'power', 'warn', 'auth'],
+  login_disabled: ['Попытка входа в заблокированный профиль', 'ban', 'bad', 'auth'],
+  assistant_create: ['Создан помощник', 'userPlus', 'warn', 'auth'],
+  assistant_password: ['Сменён пароль помощника', 'key', 'warn', 'auth'],
+  assistant_disable: ['Помощник заблокирован', 'ban', 'warn', 'auth'],
+  assistant_enable: ['Помощник разблокирован', 'checkCircle', 'ok', 'auth'],
+  assistant_delete: ['Помощник удалён', 'trash', 'warn', 'auth'],
   server_create: ['Добавлен сервер', 'plus', 'ok', 'data'],
   server_update: ['Изменён сервер', 'edit', '', 'data'],
   server_delete: ['Удалён сервер', 'trash', 'warn', 'data'],
@@ -72,7 +78,7 @@ export async function render(root) {
       const [label, iconName, tone] = EVENTS[r.event] || [r.event, 'info', ''];
       let detail = r.detail || '';
       if (r.event === 'secret_view') detail = detail.replace(/\((view|copy|edit)\)$/, (_, k) => `(${REASONS[k]})`);
-      const sub = [detail, r.ip && `IP ${r.ip}`, shortUa(r.ua)].filter(Boolean).join(' · ');
+      const sub = [r.actor && `👤 ${r.actor}`, detail, r.ip && `IP ${r.ip}`, shortUa(r.ua)].filter(Boolean).join(' · ');
       return h('div', { class: `ev ${tone}`, style: { '--i': i } },
         h('div', { class: 'e-icon' }, icon(iconName)),
         h('div', { class: 'e-main' }, h('b', { text: label }), sub && h('span', { text: sub, title: r.ua || '' })),

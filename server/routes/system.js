@@ -6,7 +6,7 @@ import { getSetting, q, setSetting } from '../db.js';
 import { ensureIcon } from '../favicon.js';
 import { runChecks, statusSnapshot } from '../monitor.js';
 import { remindDays, remindHour, runReminders } from '../reminders.js';
-import { createLimiter, rateLimit } from '../security.js';
+import { createLimiter, rateLimit, requireAdmin } from '../security.js';
 import { TOKEN_RE, getBotToken, notify, setBotToken, telegramReady, tgCall } from '../telegram.js';
 import { HttpError, bad, id as validId, notFound, oneOf, secret, siteUrl, str } from '../validate.js';
 import { confirmPassword } from './auth.js';
@@ -57,6 +57,10 @@ router.get('/payments', (req, res) => {
   res.json(q(`SELECT id, server_id AS serverId, server_name AS serverName, due_date AS dueDate, amount, currency, paid_at AS paidAt
               FROM payments ORDER BY paid_at DESC LIMIT 300`).all());
 });
+
+/* ───── Дальше — только администратор ───── */
+
+router.use(requireAdmin);
 
 /* ───── Настройки ───── */
 
@@ -151,7 +155,7 @@ router.use('/telegram', tg);
 
 router.get('/audit', (req, res) => {
   const limit = Math.min(1000, Math.max(1, Number.parseInt(req.query.limit, 10) || 300));
-  res.json(q('SELECT id, ts, event, ip, ua, detail FROM audit ORDER BY id DESC LIMIT ?').all(limit));
+  res.json(q('SELECT id, ts, event, ip, ua, detail, actor FROM audit ORDER BY id DESC LIMIT ?').all(limit));
 });
 
 /* ───── Бэкап ───── */
@@ -170,7 +174,7 @@ router.post('/backup/import', rateLimit(backupLimiter, bySession), async (req, r
   const text = typeof req.body?.file === 'string' ? req.body.file : '';
   if (!text) throw bad('Выберите файл бэкапа');
   if (mode === 'replace') await confirmPassword(req, req.body?.accountPassword);
-  const count = await importBackup(req.session.dek, text, password, mode);
+  const count = await importBackup(req.session.dek, text, password, mode, req.session.userId);
   audit('backup_import', req, `${count} шт., режим: ${mode === 'replace' ? 'замена' : 'добавление'}`);
   runChecks().catch(() => {});
   res.json({ ok: true, count });

@@ -347,7 +347,7 @@ function sessionsSection(i) {
       return h('div', { class: 'sess' },
         h('div', { class: 'e-icon' }, icon(/Android|iPhone|iPad/.test(x.ua) ? 'phone' : 'monitor')),
         h('div', { class: 'txt' },
-          h('b', { text: `${shortUa(x.ua) || 'Неизвестно'}${x.current ? ' — это устройство' : ''}` }),
+          h('b', { text: `${x.username}${x.role === 'assistant' ? ' (помощник)' : ''} · ${shortUa(x.ua) || 'Неизвестно'}${x.current ? ' — это устройство' : ''}` }),
           h('span', { text: `IP ${x.ip} · вход ${fmtDateTime(x.createdAt)} · активность ${timeAgo(x.lastSeen)}` })),
         x.current ? h('span', { class: 'badge ok', text: 'Текущая' }) : end);
     })));

@@ -10,7 +10,8 @@ import { startReminders } from './reminders.js';
 import authRoutes, { setupToken } from './routes/auth.js';
 import serverRoutes from './routes/servers.js';
 import systemRoutes from './routes/system.js';
-import { createLimiter, currentSession, noStore, rateLimit, requireAuth, sameOrigin, securityHeaders } from './security.js';
+import userRoutes from './routes/users.js';
+import { createLimiter, currentSession, noStore, rateLimit, requireAdmin, requireAuth, sameOrigin, securityHeaders } from './security.js';
 import { base32Encode } from './totp.js';
 import { HttpError } from './validate.js';
 
@@ -32,6 +33,7 @@ api.use(noStore, sameOrigin, rateLimit(apiLimiter));
 api.use((req, res, next) => (req.path === '/backup/import' ? bigJson : smallJson)(req, res, next));
 api.use('/auth', authRoutes);
 api.use('/servers', requireAuth, serverRoutes);
+api.use('/users', requireAuth, requireAdmin, userRoutes);
 api.use(requireAuth, systemRoutes);
 app.use('/api', api);
 

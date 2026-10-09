@@ -86,8 +86,11 @@ export function render(root) {
   function item(s) {
     const left = daysUntil(s.payDate);
     const tone = s.remind ? toneOf(left) : '';
-    const paid = h('button', { class: 'btn btn-ok btn-sm', type: 'button' }, icon('check', 'i-sm'), 'Оплачено');
-    paid.addEventListener('click', () => markPaid(s, paid));
+    let paid = null;
+    if (s.canEdit) {
+      paid = h('button', { class: 'btn btn-ok btn-sm', type: 'button' }, icon('check', 'i-sm'), 'Оплачено');
+      paid.addEventListener('click', () => markPaid(s, paid));
+    }
     return h('div', { class: 'tl-item', dataset: { date: s.payDate } },
       serverIcon(s, 'mini-icon'),
       h('div', { class: 'txt' }, h('b', { text: s.name }), h('span', { text: [s.hostingName, `${s.host}`].filter(Boolean).join(' · ') })),

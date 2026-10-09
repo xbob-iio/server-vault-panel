@@ -31,6 +31,7 @@ export function createSession(user, dek, req) {
     id: randomToken(9),
     userId: user.id,
     username: user.username,
+    role: user.role === 'assistant' ? 'assistant' : 'admin',
     dek,
     csrf: randomToken(24),
     createdAt: now,
@@ -66,13 +67,16 @@ export function destroyUserSessions(userId, keep = null) {
   for (const s of [...sessions.values()]) if (s.userId === userId && s !== keep) destroySession(s);
 }
 
-export function listSessions(userId) {
-  return [...sessions.values()].filter((s) => s.userId === userId);
+/** userId = null — сессии всех пользователей (для администратора). */
+export function listSessions(userId = null) {
+  return [...sessions.values()].filter((s) => userId == null || s.userId === userId);
 }
 
-export function findSessionById(userId, id) {
-  return listSessions(userId).find((s) => s.id === id) || null;
+export function findSessionById(id) {
+  return listSessions().find((s) => s.id === id) || null;
 }
+
+export const hasActiveSession = (userId) => listSessions(userId).length > 0;
 
 export function createPending(user, dek) {
   const token = randomToken(32);

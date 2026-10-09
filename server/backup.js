@@ -70,7 +70,7 @@ function parsePayment(p) {
   };
 }
 
-export async function importBackup(dek, text, password, mode) {
+export async function importBackup(dek, text, password, mode, ownerId) {
   let file;
   try {
     file = JSON.parse(text);
@@ -119,7 +119,7 @@ export async function importBackup(dek, text, password, mode) {
          WHERE icons.mime IS NULL`).run(icon.domain, icon.mime, icon.data, icon.siteName, Date.now());
     }
     for (const s of servers) {
-      const id = insertServer(dek, s);
+      const id = insertServer(dek, s, ownerId);
       for (const p of s.payments) {
         q('INSERT INTO payments (server_id, server_name, due_date, amount, currency, paid_at) VALUES (?, ?, ?, ?, ?, ?)')
           .run(id, s.name, p.dueDate, p.amount, p.currency, p.paidAt);

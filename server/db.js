@@ -91,6 +91,20 @@ db.exec(`
   );
 `);
 
+/* ───── миграции для существующих баз ───── */
+
+function addColumn(table, column, definition) {
+  const exists = db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
+  if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+addColumn('users', 'role', "TEXT NOT NULL DEFAULT 'admin'");
+addColumn('users', 'disabled', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('users', 'created_by', 'INTEGER');
+addColumn('users', 'last_login_at', 'INTEGER');
+addColumn('servers', 'owner_id', 'INTEGER');
+addColumn('audit', 'actor', 'TEXT');
+
 const statements = new Map();
 /** Подготовленное выражение с кэшем. Все запросы только через параметры — никакой конкатенации. */
 export function q(sql) {

@@ -6,15 +6,30 @@ import { q, tx } from '../db.js';
 import { ensureIcon } from '../favicon.js';
 import { checkServer, forgetServer } from '../monitor.js';
 import {
-  bad, bool, domainOf, host, id as validId, isoDate, notFound, oneOf, port, price, secret, siteUrl, str,
+  HttpError, bad, bool, domainOf, host, id as validId, isoDate, notFound, oneOf, port, price, secret, siteUrl, str,
 } from '../validate.js';
 
 export const KINDS = ['vds', 'vpn', 'dedicated', 'other'];
 export const PERIODS = ['month', 'quarter', 'half', 'year', 'once'];
 export const CURRENCIES = ['RUB', 'USD', 'EUR', 'USDT'];
 
-const SELECT = `SELECT s.*, i.id AS icon_id, i.mime AS icon_mime, i.fetched_at AS icon_ver
-                FROM servers s LEFT JOIN icons i ON i.domain = s.hosting_domain`;
+const SELECT = `SELECT s.*, i.id AS icon_id, i.mime AS icon_mime, i.fetched_at AS icon_ver, u.username AS owner_name, u.role AS owner_role
+                FROM servers s
+                LEFT JOIN icons i ON i.domain = s.hosting_domain
+                LEFT JOIN users u ON u.id = s.owner_id`;
+
+/*
+ * Права:
+ *  - администратор — полный доступ ко всем серверам;
+ *  - помощник видит все серверы, но логин, пароль и заметки — только у своих,
+ *    и изменять / удалять / отмечать оплату может только свои.
+ * Серверы без владельца (созданные до появления помощников) принадлежат администратору.
+ */
+export const canManage = (session, row) => session.role === 'admin' || (row.owner_id != null && row.owner_id === session.userId);
+
+function mustManage(req, row) {
+  if (!canManage(req.session, row)) throw new HttpError(403, 'Это сервер другого пользователя — доступ только на просмотр');
+}
 
 function decrypt(dek, blob, field) {
   try {
@@ -24,15 +39,20 @@ function decrypt(dek, blob, field) {
   }
 }
 
-function toJson(row, dek) {
+function toJson(row, session) {
+  const full = canManage(session, row);
   return {
     id: row.id,
     name: row.name,
     kind: row.kind,
     host: row.host,
     port: row.port,
-    login: decrypt(dek, row.login_enc, 'login'),
+    login: full ? decrypt(session.dek, row.login_enc, 'login') : '',
     hasPassword: Boolean(row.password_enc),
+    restricted: !full,
+    canEdit: full,
+    mine: row.owner_id === session.userId || (row.owner_id == null && session.role === 'admin'),
+    owner: row.owner_name ? { name: row.owner_name, role: row.owner_role } : null,
     hostingUrl: row.hosting_url || '',
     hostingName: row.hosting_name || '',
     hostingDomain: row.hosting_domain || '',
@@ -80,11 +100,11 @@ function columns(dek, s) {
   ];
 }
 
-export function insertServer(dek, s, now = Date.now()) {
+export function insertServer(dek, s, ownerId, now = Date.now()) {
   return Number(q(`INSERT INTO servers (name, kind, host, port, login_enc, password_enc, notes_enc, hosting_url, hosting_name,
-                     hosting_domain, pay_date, period, price, currency, remind, monitor, created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(...columns(dek, s), now, now).lastInsertRowid);
+                     hosting_domain, pay_date, period, price, currency, remind, monitor, created_at, updated_at, owner_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(...columns(dek, s), now, now, ownerId).lastInsertRowid);
 }
 
 const getRow = (id) => q(`${SELECT} WHERE s.id = ?`).get(id);
@@ -103,11 +123,12 @@ function afterSave(s, id) {
 const router = express.Router();
 
 router.get('/', (req, res) => {
-  res.json(q(`${SELECT} ORDER BY s.pay_date, s.name`).all().map((r) => toJson(r, req.session.dek)));
+  res.json(q(`${SELECT} ORDER BY s.pay_date, s.name`).all().map((r) => toJson(r, req.session)));
 });
 
 router.get('/:id/secret', (req, res) => {
   const row = mustRow(req);
+  mustManage(req, row);
   const reason = oneOf(req.query.reason, ['view', 'copy', 'edit'], 'view');
   audit('secret_view', req, `${row.name} (${reason})`);
   res.json({
@@ -118,25 +139,27 @@ router.get('/:id/secret', (req, res) => {
 
 router.post('/', (req, res) => {
   const s = parseServer(req.body);
-  const id = insertServer(req.session.dek, s);
+  const id = insertServer(req.session.dek, s, req.session.userId);
   audit('server_create', req, s.name);
   afterSave(s, id);
-  res.status(201).json(toJson(getRow(id), req.session.dek));
+  res.status(201).json(toJson(getRow(id), req.session));
 });
 
 router.put('/:id', (req, res) => {
   const row = mustRow(req);
+  mustManage(req, row);
   const s = parseServer(req.body);
   q(`UPDATE servers SET name = ?, kind = ?, host = ?, port = ?, login_enc = ?, password_enc = ?, notes_enc = ?, hosting_url = ?,
        hosting_name = ?, hosting_domain = ?, pay_date = ?, period = ?, price = ?, currency = ?, remind = ?, monitor = ?, updated_at = ?
      WHERE id = ?`).run(...columns(req.session.dek, s), Date.now(), row.id);
   audit('server_update', req, s.name);
   afterSave(s, row.id);
-  res.json(toJson(getRow(row.id), req.session.dek));
+  res.json(toJson(getRow(row.id), req.session));
 });
 
 router.delete('/:id', (req, res) => {
   const row = mustRow(req);
+  mustManage(req, row);
   q('DELETE FROM servers WHERE id = ?').run(row.id);
   forgetServer(row.id);
   audit('server_delete', req, row.name);
@@ -145,6 +168,7 @@ router.delete('/:id', (req, res) => {
 
 router.post('/:id/paid', (req, res) => {
   const row = mustRow(req);
+  mustManage(req, row);
   const months = PERIOD_MONTHS[row.period];
   tx(() => {
     q('INSERT INTO payments (server_id, server_name, due_date, amount, currency, paid_at) VALUES (?, ?, ?, ?, ?, ?)')
@@ -153,7 +177,7 @@ router.post('/:id/paid', (req, res) => {
     else q('UPDATE servers SET remind = 0, updated_at = ? WHERE id = ?').run(Date.now(), row.id);
   });
   audit('payment', req, row.name);
-  res.json(toJson(getRow(row.id), req.session.dek));
+  res.json(toJson(getRow(row.id), req.session));
 });
 
 router.post('/:id/check', async (req, res) => {

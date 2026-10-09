@@ -34,8 +34,21 @@ function field(iconName, label, value, actions) {
     h('div', { class: 'acts' }, actions));
 }
 
+const hidden = () => h('span', { class: 'v none' }, icon('lock', 'i-sm'), ' скрыто');
+
+/** Чей сервер: администратору показываем помощника-владельца, помощнику — «мой» / «только просмотр». */
+function ownerChip(s) {
+  if (store.me?.role === 'admin') {
+    return s.owner?.role === 'assistant' ? h('span', { class: 'own-chip', title: 'Добавил помощник' }, icon('user', 'i-sm'), s.owner.name) : null;
+  }
+  return s.mine
+    ? h('span', { class: 'own-chip mine' }, icon('check', 'i-sm'), 'мой')
+    : h('span', { class: 'own-chip ro', title: 'Сервер администратора: логин и пароль скрыты' }, icon('lock', 'i-sm'), 'только просмотр');
+}
+
 function passwordField(s) {
   const MASK = '••••••••••';
+  if (s.restricted) return field('key', 'Пароль', hidden(), []);
   if (!s.hasPassword) return field('key', 'Пароль', h('span', { class: 'v none', text: 'не задан' }), []);
   const v = h('span', { class: 'v masked', text: MASK });
   let timer = null;
@@ -99,11 +112,11 @@ function serverCard(s, index) {
 
   const head = h('div', { class: 'srv-head' },
     iconBox,
-    h('div', { class: 'srv-title' }, h('h3', { text: s.name, title: s.name }), hosting),
+    h('div', { class: 'srv-title' }, h('h3', { text: s.name, title: s.name }), h('div', { class: 'srv-sub' }, hosting, ownerChip(s))),
     h('div', { class: 'srv-actions' },
       h('span', { class: `badge ${s.kind}`, text: KIND_LABEL[s.kind] || s.kind }),
-      iconBtn('edit', 'Изменить', () => openServerForm(s)),
-      iconBtn('trash', 'Удалить', () => deleteServer(s, el), 'danger')));
+      s.canEdit && iconBtn('edit', 'Изменить', () => openServerForm(s)),
+      s.canEdit && iconBtn('trash', 'Удалить', () => deleteServer(s, el), 'danger')));
 
   const stText = h('span', { class: 'st-text' });
   const sparkSlot = h('div', { class: 'spark-slot' });
@@ -137,11 +150,16 @@ function serverCard(s, index) {
       copyBtn(sshCommand(s), 'SSH-команда скопирована', 'Скопировать SSH-команду', 'terminal'),
       copyBtn(s.host, 'IP скопирован', 'Скопировать IP'),
     ]),
-    field('user', 'Логин', h('span', { class: s.login ? 'v' : 'v none', text: s.login || 'не задан' }), s.login ? [copyBtn(s.login, 'Логин скопирован')] : []),
+    s.restricted
+      ? field('user', 'Логин', hidden(), [])
+      : field('user', 'Логин', h('span', { class: s.login ? 'v' : 'v none', text: s.login || 'не задан' }), s.login ? [copyBtn(s.login, 'Логин скопирован')] : []),
     passwordField(s));
 
-  const paidBtn = h('button', { class: 'btn btn-ok btn-sm', type: 'button' }, icon('check', 'i-sm'), 'Оплачено');
-  paidBtn.addEventListener('click', () => markPaid(s, paidBtn));
+  let paidBtn = null;
+  if (s.canEdit) {
+    paidBtn = h('button', { class: 'btn btn-ok btn-sm', type: 'button' }, icon('check', 'i-sm'), 'Оплачено');
+    paidBtn.addEventListener('click', () => markPaid(s, paidBtn));
+  }
   const foot = h('div', { class: 'srv-foot' }, payRing(s), payInfo(s), paidBtn);
 
   el.append(head, statusRow, fields, foot);
